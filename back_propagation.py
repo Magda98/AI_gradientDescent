@@ -3,6 +3,7 @@ import numpy as np
 from random import sample, shuffle
 import matplotlib.pyplot as plt
 import pickle
+import time
 from numba import vectorize, float64, int32, int64, float32
 
 @vectorize([int32(int32, int32),
@@ -12,6 +13,9 @@ from numba import vectorize, float64, int32, int64, float32
 def ff(a, b):
     return a * b
 
+# def unnormalize(x):
+#     x = ((x+1)/2)*7
+#     return x
 
 def normalization(x, xmin, xmax):
     for idv,val in enumerate(x):
@@ -53,13 +57,13 @@ def error_a(err, weight):
     x =  sum(weight * err)
     return x
 
-def weightUpdate_l(weight, errors, arg, fe, learningRate):
+def weightUpdate_a(weight, errors, arg, fe, learningRate):
     for i, val in enumerate(weight):
         for j in range(val.size):
             weight[i][j] += learningRate*derivative(fe[i])*errors[i]*arg[j]
     return weight
 
-def weightUpdate_a(weight, ls, arg, out, learningRate):
+def weightUpdate_l(weight, ls, arg, out, learningRate):
     for i in range(weight.size):
         weight[i] += learningRate*ls*1*arg[i]
     return weight
@@ -95,7 +99,7 @@ def testNet(wages, testPn, testTn, neuronsInLayers, layerNum):
         testResult.append(y)
         arg.append(sum(fe[-1] * wages[-1]))
         fe.append(y)
-        ls = loss(y, testTn[i])
+        ls = loss(y , testTn[i])
         mse.append(0.5*ls**2)
     return [np.array(mse).max(), testResult]
 
@@ -107,7 +111,7 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
         wages.append(np.random.rand(neuronsInLayers[i], neuronsInLayers[i-1] ))
     # dla ostatniej warstwy
     wages.append(np.random.rand(neuronsInLayers[-1]))
-
+    lats_ls = 0
     for j in range(epochNum):
         result = []
         for i, inData in enumerate(Pn):
@@ -138,13 +142,25 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
                 errors.append(np.asarray(temp_errors))
             errors = errors[::-1]
             for k in range(layerNum):
-                wages[k] = weightUpdate_l(wages[k], errors[k], fe[k], arg[k], learningRate)
-            wages[layerNum] = weightUpdate_a(wages[layerNum], ls, fe[-2], arg[-1], learningRate)
+                wages[k] = weightUpdate_a(wages[k], errors[k], fe[k], arg[k], learningRate)
+            wages[layerNum] = weightUpdate_l(wages[layerNum], ls, fe[-2], arg[-1], learningRate)
 
-        mse = testNet(wages, testPn, testTn, neuronsInLayers, layerNum)[0]
-        if(mse < 0.3):
+        mse = testNet(wages, testPn, testTn, neuronsInLayers, layerNum)
+        # plt.plot(mse[1])
+        # plt.plot(testTn)
+        # plt.draw()
+        # plt.pause(1e-17)
+        # plt.clf()
+        x = mse[0]
+        if(x < lats_ls):
+            learningRate = 0.002
+        else:
+            learningRate = 0.02
+        lats_ls = x
+        if(x < 0.1):
+            saveModel(wages, neuronsInLayers, layerNum, str(time.time()))
             break
-        print(f'Epoka #{j:02d} mse: {mse:.10f}', end='\r')
+        print(f'Epoka #{j:02d} mse: {x:.10f}', end='\r')
     testResult = testNet(wages, testPn, testTn, neuronsInLayers, layerNum)[1]
     saveModel(wages, neuronsInLayers, layerNum, "model")
     plt.plot(result)
@@ -165,6 +181,9 @@ data = np.array(data).reshape(101,17)
 data = data.tolist()
 shuffle(data)
 data = np.asarray(data)
+data = data.transpose()
+data[12] = normalization(data[12], np.min(data[12]), np.max(data[12]))
+data = data.transpose()
 testData = data[0:20, :]
 data = data[20:101, :]
 data=data[np.argsort(data[:,16])]
@@ -179,21 +198,24 @@ Tn = data[16:17][0]
 testPn = testData[0:15]
 testTn = testData[16:17][0]
 
-# for x, val in enumerate(Pn):
-Pn[12]  = normalization(Pn[12], np.min(Pn[12]), np.max(Pn[12]))
-# for x, val in enumerate(testPn):
-testPn[12]  = normalization(testPn[12], np.min(testPn[13]), np.max(testPn[13]))
+# # for x, val in enumerate(Pn):
+# Pn[12]  = normalization(Pn[12], np.min(Pn[12]), np.max(Pn[12]))
+# # for x, val in enumerate(testPn):
+# testPn[12]  = normalization(testPn[12], np.min(testPn[13]), np.max(testPn[13]))
 
-lr = 0.05
+# Tn  = normalization(Tn, np.min(Tn), np.max(Tn))
+# testTn  = normalization(testTn, np.min(testTn), np.max(testTn))
+
+lr = 0.02
 Pn = Pn.transpose()
 testPn = testPn.transpose()
 
 n = [26, 12, 4]
-neuralNetwork(Pn, Tn, len(n), n, 20000, lr, testPn, testTn)
+# neuralNetwork(Pn, Tn, len(n), n, 2000, lr, testPn, testTn)
 
-model = loadModel("model1")
+model = loadModel("0,1")
 result = testNet(model[0], testPn, testTn, model[1], model[2])
 
-# plt.plot(result[1])
-# plt.plot(testTn)
+plt.plot(result[1])
+plt.plot(testTn)
 plt.show()
