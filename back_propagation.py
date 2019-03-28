@@ -2,6 +2,7 @@ import math
 import numpy as np
 from random import sample, shuffle
 import matplotlib.pyplot as plt
+import pickle
 from numba import vectorize, float64, int32, int64, float32
 
 @vectorize([int32(int32, int32),
@@ -28,7 +29,7 @@ def derivative(x):
 def weights (tab, weight):
     return ff(tab ,weight)
 
-def hiddenlayer(tab, neuronsNumber, weight):
+def hiddenLayer(tab, neuronsNumber, weight):
     arg = []
     ee = []
     for i in range(neuronsNumber):
@@ -37,7 +38,7 @@ def hiddenlayer(tab, neuronsNumber, weight):
         arg.append( activation(e))
     return [arg, ee]
 
-def outlayer(tab, weight):
+def outLayer(tab, weight):
     tab = np.asarray(tab)
     x = sum(tab*weight)
     return x
@@ -58,10 +59,25 @@ def weightUpdate_l(weight, errors, arg, fe, learningRate):
             weight[i][j] += learningRate*derivative(fe[i])*errors[i]*arg[j]
     return weight
 
-def weightUpdate_a(weight, l, arg, out, learningRate):
+def weightUpdate_a(weight, ls, arg, out, learningRate):
     for i in range(weight.size):
-        weight[i] += learningRate*l*1*arg[i]
+        weight[i] += learningRate*ls*1*arg[i]
     return weight
+
+def saveModel(wages, neuronsInLayers, layerNum, path):
+    with open(path, 'wb') as f:
+        pickle.dump(wages, f)
+        pickle.dump(neuronsInLayers, f)
+        pickle.dump(layerNum, f)
+
+def loadModel(path):
+    wages = []
+    nauronsInLayers = []
+    with open(path, 'rb') as f:
+        wages = pickle.load(f)
+        nauronsInLayers = pickle.load(f)
+        layerNum = pickle.load(f)
+    return [wages, nauronsInLayers, layerNum]
 
 def testNet(wages, testPn, testTn, neuronsInLayers, layerNum):
     mse = []
@@ -72,10 +88,10 @@ def testNet(wages, testPn, testTn, neuronsInLayers, layerNum):
         fe_arg = []
         fe.append(tab)
         for k in range(layerNum):
-            fe_arg = hiddenlayer(fe[k], neuronsInLayers[k], wages[k])
+            fe_arg = hiddenLayer(fe[k], neuronsInLayers[k], wages[k])
             fe.append(fe_arg[0])
             arg.append(fe_arg[1])
-        y = outlayer(fe[-1], wages[-1])
+        y = outLayer(fe[-1], wages[-1])
         testResult.append(y)
         arg.append(sum(fe[-1] * wages[-1]))
         fe.append(y)
@@ -100,10 +116,10 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
             fe_arg = []
             fe.append(inData)
             for k in range(layerNum):
-                fe_arg = hiddenlayer(fe[k], neuronsInLayers[k], wages[k])
+                fe_arg = hiddenLayer(fe[k], neuronsInLayers[k], wages[k])
                 fe.append(fe_arg[0])
                 arg.append(fe_arg[1])
-            output = outlayer(fe[-1], wages[-1])
+            output = outLayer(fe[-1], wages[-1])
             arg.append(sum(fe[-1] * wages[-1]))
             fe.append(output)
             ls = loss(output, Tn[i])
@@ -130,6 +146,7 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
             break
         print(f'Epoka #{j:02d} mse: {mse:.10f}', end='\r')
     testResult = testNet(wages, testPn, testTn, neuronsInLayers, layerNum)[1]
+    saveModel(wages, neuronsInLayers, layerNum, "model")
     plt.plot(result)
     plt.plot(Tn)
     plt.figure()
@@ -172,5 +189,11 @@ Pn = Pn.transpose()
 testPn = testPn.transpose()
 
 n = [26, 12, 4]
-neuralNetwork(Pn, Tn, len(n), n, 30000, lr, testPn, testTn)
+neuralNetwork(Pn, Tn, len(n), n, 20000, lr, testPn, testTn)
+
+model = loadModel("model1")
+result = testNet(model[0], testPn, testTn, model[1], model[2])
+
+# plt.plot(result[1])
+# plt.plot(testTn)
 plt.show()
