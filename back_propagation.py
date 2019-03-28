@@ -45,20 +45,20 @@ def outlayer(tab, weight):
 def loss(out, val):
     return (val - out)
 
-def error(l, weight):
+def error_l(l, weight):
     return weight * l
 
-def error1(err, weight):
+def error_a(err, weight):
     x =  sum(weight * err)
     return x
 
-def weightUpdate1(weight, errors, arg, fe, learningRate):
+def weightUpdate_l(weight, errors, arg, fe, learningRate):
     for i, val in enumerate(weight):
         for j in range(val.size):
             weight[i][j] += learningRate*derivative(fe[i])*errors[i]*arg[j]
     return weight
 
-def weightUpdate2(weight, l, arg, out, learningRate):
+def weightUpdate_a(weight, l, arg, out, learningRate):
     for i in range(weight.size):
         weight[i] += learningRate*l*1*arg[i]
     return weight
@@ -112,18 +112,18 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
             wage_fl =  wages[::-1]
             nil_fl = neuronsInLayers[::-1]
             errors = []
-            errors.append(gradient(ls, wage_fl[0]))
+            errors.append(error_l(ls, wage_fl[0]))
             for k in range(1, layerNum):
                 temp = wage_fl[k]
                 temp = temp.transpose()
                 temp_errors = []
                 for p in range(nil_fl[k]):
-                    temp_errors.append(gradient1(errors[k-1], temp[p]))
+                    temp_errors.append(error_a(errors[k-1], temp[p]))
                 errors.append(np.asarray(temp_errors))
             errors = errors[::-1]
             for k in range(layerNum):
-                wages[k] = weightUpdate1(wages[k], errors[k], fe[k], arg[k], learningRate)
-            wages[layerNum] = weightUpdate2(wages[layerNum], ls, fe[-2], arg[-1], learningRate)
+                wages[k] = weightUpdate_l(wages[k], errors[k], fe[k], arg[k], learningRate)
+            wages[layerNum] = weightUpdate_a(wages[layerNum], ls, fe[-2], arg[-1], learningRate)
 
         mse = testNet(wages, testPn, testTn, neuronsInLayers, layerNum)[0]
         if(mse < 0.3):
@@ -135,7 +135,6 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
     plt.figure()
     plt.plot(testResult)
     plt.plot(testTn)
-
 
 #main#
 
@@ -157,7 +156,6 @@ testData =testData[np.argsort(testData[:,16])]
 data = data.transpose()
 testData = testData.transpose()
 
-
 Pn = data[0:15]
 Tn = data[16:17][0]
 
@@ -169,11 +167,9 @@ Pn[12]  = normalization(Pn[12], np.min(Pn[12]), np.max(Pn[12]))
 # for x, val in enumerate(testPn):
 testPn[12]  = normalization(testPn[12], np.min(testPn[13]), np.max(testPn[13]))
 
-
 lr = 0.05
 Pn = Pn.transpose()
 testPn = testPn.transpose()
-
 
 n = [26, 12, 4]
 neuralNetwork(Pn, Tn, len(n), n, 30000, lr, testPn, testTn)
