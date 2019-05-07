@@ -11,6 +11,7 @@ import scipy.linalg
 
 
 def polyfit2d(x, y, z, order=3):
+    #funkcja do rysowania wykresu powierzchniowego
     ncols = (order + 1)**2
     G = np.zeros((x.size, ncols))
     ij = itertools.product(range(order+1), range(order+1))
@@ -20,6 +21,7 @@ def polyfit2d(x, y, z, order=3):
     return m
 
 def polyval2d(x, y, m):
+    #funkcja do rysowania wykresu powierzchniowego
     order = int(np.sqrt(len(m))) - 1
     ij = itertools.product(range(order+1), range(order+1))
     z = np.zeros_like(x, dtype=float)
@@ -28,8 +30,8 @@ def polyval2d(x, y, m):
     return z
 
 def normalization(x, xmin, xmax):
+    #normalizacja danych
     for idv,val in enumerate(x):
-        # x[idv] = ((val - xmin)/(xmax-xmin)) #(0,1)
         x[idv] = (2*(val-xmin))/(xmax - xmin) -1
     return x
 
@@ -70,7 +72,7 @@ def prepareData():
     return [data, testData]
 
 def activation(x):
-    #funkcja aktywacji sigmoidalna unipolarna
+    #funkcja aktywacji sigmoidalna bipolarna
     return np.tanh(x)
 
 def derivative(x):
@@ -81,6 +83,8 @@ def weighted_av (tab, weight):
     return tab * weight
 
 def hiddenLayer(tab, neuronsNumber, weight, bias):
+    #obliczanie łacznego pobudzenia neuronów w warstwie
+    # oraz sygnałow wyjasciowcyh z neuronów
     arg = []
     ee = []
     for i in range(neuronsNumber):
@@ -90,6 +94,7 @@ def hiddenLayer(tab, neuronsNumber, weight, bias):
     return [arg, ee]
 
 def outLayer(tab, weight, bias):
+    #obliczanie sygnału wyjściowego w ostatniej warstwie
     tab = np.asarray(tab)
     x = sum(tab*weight) + bias[0]
     return x
@@ -98,17 +103,20 @@ def loss(out, val):
     return (val - out)
 
 def error_l(l, weight, fe):
+    #obliczanie delty dla ostatniej wrastwy
     err = []
     for k, val in enumerate(fe):
         err.append(l*weight[k] *derivative(val))
     return err
 
 def error_a(err, weight, fe):
+    #obliczanie delty dla pozostałych warstw, procz ostatniej
     err = np.asarray(err)
     x = derivative(fe)* sum(weight * err)
     return x
 
 def weightUpdate_a(weight, errors, arg, fe, learningRate, bias):
+    #aktualizacja wag dla wszystkich warstw procz ostatniej
     for i, val in enumerate(weight):
         bias[i] += learningRate*errors[i]
         for j in range(val.size):
@@ -116,18 +124,21 @@ def weightUpdate_a(weight, errors, arg, fe, learningRate, bias):
     return [weight, bias]
 
 def weightUpdate_l(weight, ls, arg, out, learningRate, bias):
+    #aktualizacja wag między ostatnią warstwą, a ostatnią ukrytą warstwą
     for i in range(weight.size):
         bias[i] += learningRate*ls*1
         weight[i] += learningRate*ls*1*arg[i]
     return [weight,bias]
 
 def saveModel(wages, neuronsInLayers, layerNum, path):
+    #zapisuje dany model sieci w pliku binarnym
     with open(path, 'wb') as f:
         pickle.dump(wages, f)
         pickle.dump(neuronsInLayers, f)
         pickle.dump(layerNum, f)
 
 def loadModel(path):
+    #wczystuje dany model sieci
     weights = []
     nauronsInLayers = []
     with open(path, 'rb') as f:
@@ -137,6 +148,7 @@ def loadModel(path):
     return [weights, nauronsInLayers, layerNum]
 
 def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
+    #testuje siec na danych testowych
     pk = 0
     mse = []
     testResult = []
@@ -161,6 +173,7 @@ def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
     return [np.sum(np.array(mse)), testResult, pk]
 
 def initNW(neuronsInLayers, layerNum):
+    #inicializacja wag i biasów Nguyen-Widrow'a
     weights = []
     bias = []
     amin = -1
@@ -212,6 +225,7 @@ def initNW(neuronsInLayers, layerNum):
     return [weights, bias]
 
 def delta(arg, weights, neuronsInLayers, ls, layerNum):
+    #oblicza deltę przy propagacji wstecznej dla wszystkich warstw
     derFe = arg[::-1]
     wage_fl =  weights[::-1]
     nil_fl = neuronsInLayers[::-1]
@@ -229,6 +243,7 @@ def delta(arg, weights, neuronsInLayers, ls, layerNum):
     return d
 
 def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn):
+    #głowna funkcja odpowiadająca za sieć neuronową
     oData = []
     ep = 0
     weights, bias = initNW(neuronsInLayers, layerNum)
@@ -299,6 +314,7 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
 #main#
 if __name__ == "__main__":
     data, testData = prepareData()
+    #podział danych na wejściowe i target
     Pn = data[0:15]
     Tn = data[16:17][0]
 
@@ -311,8 +327,10 @@ if __name__ == "__main__":
     epochNum = 20
     # neuralNetwork(Pn, Tn, 2,[100, 60] , epochNum, lr, testPn, testTn)
 
-    x = list(range(10,101,10))
-    y = list(range(10,101,10))
+    ########################################################################################################################################
+    # Eksperymenty #
+    x = list(range(10,51,2))
+    y = list(range(10,51,2))
     x = np.array(x)
     y = np.array(y)
     X, Y = np.meshgrid(x,y)
