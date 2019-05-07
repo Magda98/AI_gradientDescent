@@ -144,13 +144,9 @@ def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
     pk = pk/(len(testTn)) *100
     return [np.sum(np.array(mse)), testResult, pk]
 
-def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn):
-    bias = []
-    oData = []
-    pk = []
-    lr = []
+def initNW(neuronsInLayers, layerNum):
     weights = []
-    ep = 0
+    bias = []
     amin = -1
     amax = 1
     x = 0.5 * (amax - amin)
@@ -197,15 +193,22 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
     weights.append(np.random.rand(neuronsInLayers[-1]))
     b = np.array([0]).astype(float) if 1 == 1 else w_fix * np.linspace(-1, 1, 1) * np.sign(w[:, 0])
     bias.append(b)
+    return [weights, bias]
+
+def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn):
+    bias = []
+    oData = []
+    weights = []
+    ep = 0
+    weights, bias = initNW(neuronsInLayers, layerNum)
     lr_inc = 1.05
     lr_desc = 0.7
     er = 1.04
-    lats_ls = 0
     last = 0
     for j in range(epochNum):
         result = []
         s_weights = weights
-        sse=[]
+        mse=[]
         for i, inData in enumerate(Pn):
             fe = []
             arg = []
@@ -218,7 +221,7 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
             output = outLayer(fe[-1], weights[-1], bias[-1])
             arg.append(sum(fe[-1] * weights[-1]))
             ls = loss(output, Tn[i])
-            sse.append(0.5*(ls**2))
+            mse.append(0.5*(ls**2))
             result.append(output)
             derFe = arg[::-1]
             wage_fl =  weights[::-1]
@@ -245,43 +248,23 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
 
 
         tData = testNet(weights, testPn, testTn, neuronsInLayers, layerNum, bias)
-        oData.append(tData[0])
-        pk.append(tData[2])
-        lr.append(learningRate)
-        plt.plot(tData[1])
-        plt.plot(testTn)
-        plt.draw()
-        plt.pause(1e-17)
-        plt.clf()
-        if(sum(sse) == 100 ):
-            ep = j
-            break
-        if(sum(sse) > lats_ls*er):
+        # oData.append(tData[0])
+        # pk.append(tData[2])
+        # lr.append(learningRate)
+        # plt.plot(tData[1])
+        # plt.plot(testTn)
+        # plt.draw()
+        # plt.pause(1e-17)
+        # plt.clf()
+        if(sum(mse) > last*er):
             weights = s_weights
             if(learningRate >= 0.0001):
                 learningRate = lr_desc * learningRate
-        elif( tData[0] < lats_ls):
+        elif( sum(mse) < last):
             learningRate = lr_inc * learningRate
             if(learningRate > 0.99):
                 learningRate = 0.99
-
-        lats_ls = sum(sse)
-        # if(tData[0] < 0.03):
-        #     saveModel(weights, neuronsInLayers, layerNum, str(time.time()))
-        #     ep = j
-        #     break
-        # if(tData[2] >= 60 and neuronsInLayers[0] < 8):
-        #     ep = j
-        #     break
-        # elif(tData[2] >= 70 and neuronsInLayers[0] >= 8 ):
-        #     ep = j
-        #     break    
-        # elif(tData[2] > 80 and neuronsInLayers[0] >= 10):
-        #     ep = j
-        #     break
-        # elif(tData[2] >= 90 and neuronsInLayers[0] > 20):
-        #     ep = j
-        #     break
+        last = sum(mse)
         print(f'Epoka #{j:02d} mse: {tData[0]:.10f}, lr: {learningRate:.4f}, pk: {tData[2]:.2f}%, n: {neuronsInLayers[0]}, {neuronsInLayers[1]}%', end='\r')
         ep = j
     testResult = testNet(weights, testPn, testTn, neuronsInLayers, layerNum,bias)
@@ -342,9 +325,8 @@ if __name__ == "__main__":
     lr = 0.01
     Pn = Pn.transpose()
     testPn = testPn.transpose()
-    epochNum = 2000
-    neuralNetwork(Pn, Tn, 2,[100,50] , epochNum, lr, testPn, testTn)
-    # z = []
+    epochNum = 20000
+    neuralNetwork(Pn, Tn, 2,[100,80] , epochNum, lr, testPn, testTn)
 
     # x = [4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
     # y = [1,2,3,4,5,6,7,8,9,10,11,12]
