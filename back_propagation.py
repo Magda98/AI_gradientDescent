@@ -26,25 +26,8 @@ def polyval2d(x, y, m):
     ij = itertools.product(range(order+1), range(order+1))
     z = np.zeros_like(x, dtype=float)
     for a, (i,j) in zip(m, ij):
-        # z = np.add(z, a * x**i * y**j, out=z, casting="unsafe")
         z += a * x**i * y**j
     return z
-
-def job(Pn, Tn,k , epochNum, lr, testPn, testTn):
-    czy = 0
-    while (czy < 40):
-        lr = 0.09
-        nn = neuralNetwork(Pn, Tn, 2,k , epochNum, lr, testPn, testTn)
-        czy = nn[0]
-        if(czy < 40):
-            epochNum+= 100
-    print(f'end XD')
-    return [nn[0],nn[3]]
-
-def task(x):
-    z.append(x[0])
-    dd.append(x[1])
-
 
 def normalization(x, xmin, xmax):
     for idv,val in enumerate(x):
@@ -52,6 +35,41 @@ def normalization(x, xmin, xmax):
         x[idv] = (2*(val-xmin))/(xmax - xmin) -1
     return x
 
+def prepareData():
+    # wczytanie i przygotowanie danych
+    testData = []
+    data = []
+    d=[]
+    with open("zoo.txt") as f:
+        d = [list(map(float, x.strip().split(',')[1:])) for x in f]
+
+    testData = []
+    tab = []
+    data = d
+    # data = data.tolist()
+    shuffle(data)
+    data = np.asarray(data)
+    data = data.transpose()
+    for k in range (16):
+        data[k] = normalization(data[k], np.min(data[k]), np.max(data[k]))
+    data = data.transpose()
+    tile = [8, 4, 1, 2, 1, 2, 2]
+    for k in range(1,8):
+        ile = 0
+        for m,val in enumerate(data):
+            if(val[16] == k):
+                ile+=1
+                tab.append(m)
+                testData.append(val)
+            if(ile == tile[k-1]):
+                break
+    data = np.delete(data, tab, 0)
+    # data=data[np.argsort(data[:,16])]
+    testData = np.asarray(testData)
+    testData =testData[np.argsort(testData[:,16])]
+    data = data.transpose()
+    testData = testData.transpose()
+    return [data, testData]
 
 def activation(x):
     #funkcja aktywacji sigmoidalna unipolarna
@@ -195,10 +213,25 @@ def initNW(neuronsInLayers, layerNum):
     bias.append(b)
     return [weights, bias]
 
+def delta(arg, weights, neuronsInLayers, ls, layerNum):
+    derFe = arg[::-1]
+    wage_fl =  weights[::-1]
+    nil_fl = neuronsInLayers[::-1]
+    d = []
+    d.append(error_l(ls, wage_fl[0], derFe[1]))
+    for k in range(1, layerNum):
+        temp = wage_fl[k]
+        temp = temp.transpose()
+        temp_d = []
+        dfe = derFe[k+1]
+        for p in range(nil_fl[k]):
+            temp_d.append(error_a(d[k-1], temp[p], dfe[p]))
+        d.append(np.asarray(temp_d))
+    d = d[::-1]
+    return d
+
 def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn):
-    bias = []
     oData = []
-    weights = []
     ep = 0
     weights, bias = initNW(neuronsInLayers, layerNum)
     lr_inc = 1.05
@@ -207,7 +240,7 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
     last = 0
     for j in range(epochNum):
         result = []
-        s_weights = weights
+        o_weights = weights
         mse=[]
         for i, inData in enumerate(Pn):
             fe = []
@@ -223,29 +256,15 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
             ls = loss(output, Tn[i])
             mse.append(0.5*(ls**2))
             result.append(output)
-            derFe = arg[::-1]
-            wage_fl =  weights[::-1]
-            nil_fl = neuronsInLayers[::-1]
-            errors = []
-            errors.append(error_l(ls, wage_fl[0], derFe[1]))
-            for k in range(1, layerNum):
-                temp = wage_fl[k]
-                temp = temp.transpose()
-                temp_errors = []
-                dfe = derFe[k+1]
-                for p in range(nil_fl[k]):
-                    temp_errors.append(error_a(errors[k-1], temp[p], dfe[p]))
-                errors.append(np.asarray(temp_errors))
-            errors = errors[::-1]
+            delta_w_b = delta(arg, weights, neuronsInLayers, ls, layerNum)
             for k in range(layerNum):
-                update = weightUpdate_a(weights[k], errors[k], fe[k], arg[k], learningRate, bias[k])
+                update = weightUpdate_a(weights[k], delta_w_b[k], fe[k], arg[k], learningRate, bias[k])
                 weights[k] = update[0]
                 bias[k] = update [1]
             update = weightUpdate_l(weights[layerNum], ls, fe[-1], arg[-1], learningRate, bias[-2])
             weights[layerNum] = update[0]
             bias[-2] = update[1]
             bias[-1] += ls
-
 
         tData = testNet(weights, testPn, testTn, neuronsInLayers, layerNum, bias)
         # oData.append(tData[0])
@@ -256,8 +275,8 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
         # plt.draw()
         # plt.pause(1e-17)
         # plt.clf()
-        if(sum(mse) > last*er):
-            weights = s_weights
+        if( sum(mse) > last*er):
+            weights = o_weights
             if(learningRate >= 0.0001):
                 learningRate = lr_desc * learningRate
         elif( sum(mse) < last):
@@ -281,63 +300,27 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
 
 #main#
 if __name__ == "__main__":
-    # wczytanie i przygotowanie danych
-    testData = []
-    data = []
-    d=[]
-    with open("zoo.txt") as f:
-        d = [list(map(float, x.strip().split(',')[1:])) for x in f]
-
-    testData = []
-    tab = []
-    data = d
-    # data = data.tolist()
-    shuffle(data)
-    data = np.asarray(data)
-    data = data.transpose()
-    for k in range (16):
-        data[k] = normalization(data[k], np.min(data[k]), np.max(data[k]))
-    # data[12] = normalization(data[12], np.min(data[12]), np.max(data[12]))
-    data = data.transpose()
-    tile = [8, 4, 1, 2, 1, 2, 2]
-    for k in range(1,8):
-        ile = 0
-        for m,val in enumerate(data):
-            if(val[16] == k):
-                ile+=1
-                tab.append(m)
-                testData.append(val)
-            if(ile == tile[k-1]):
-                break
-    data = np.delete(data, tab, 0)
-    # data=data[np.argsort(data[:,16])]
-    # testData = data
-    testData = np.asarray(testData)
-    testData =testData[np.argsort(testData[:,16])]
-    data = data.transpose()
-    testData = testData.transpose()
-
+    data, testData = prepareData()
     Pn = data[0:15]
     Tn = data[16:17][0]
 
     testPn = testData[0:15]
     testTn = testData[16:17][0]
+
     lr = 0.01
     Pn = Pn.transpose()
     testPn = testPn.transpose()
     epochNum = 20000
-    neuralNetwork(Pn, Tn, 2,[100,80] , epochNum, lr, testPn, testTn)
+    neuralNetwork(Pn, Tn, 5,[100,40, 20, 10, 5] , epochNum, lr, testPn, testTn)
 
     # x = [4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
     # y = [1,2,3,4,5,6,7,8,9,10,11,12]
     # x = np.array(x)
     # y = np.array(y)
-    # # dd = []
     # X, Y = np.meshgrid(x,y)
     # XX = X.flatten()
     # YY = Y.flatten()
     # Z=[]
-    # # pool = Pool()
     # dd=[];
     # for i, val in enumerate(X):
     #     for j, vall in enumerate(val):
@@ -358,36 +341,11 @@ if __name__ == "__main__":
     #         dd.append(nn[3])
     #     epochNum+=50;
             
-
-    # # pool.close()
-    # # pool.join()
     # data = np.c_[XX,YY,Z]
     # f = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]).transpose()
-    # order = 3   # 1: linear, 2: quadratic
-    # if order == 1:
-    #     # best-fit linear plane
-    #     A = np.c_[data[:,0], data[:,1], np.ones(data.shape[0])]
-    #     C,_,_,_ = scipy.linalg.lstsq(A, data[:,2])    # coefficients
-        
-    #     # evaluate it on grid
-    #     # Z = C[0]*X + C[1]*Y + C[2]
-    #     # or expressed using matrix/vector product
-    #     ZZ = np.dot(np.c_[XX, YY, np.ones(XX.shape)], C).reshape(X.shape)
-
-    # elif order == 2:
-    #     # best-fit quadratic curve
-    #     A = np.c_[np.ones(data.shape[0]), data[:,:2], np.prod(data[:,:2], axis=1), data[:,:2]**2]
-    #     C,_,_,_ = scipy.linalg.lstsq(A, data[:,2])
-    #     ZZ = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
-    #     # Z = C[4]*X**2. + C[5]*Y**2. + C[3]*X*Y + C[1]*X + C[2]*Y + C[0]
-    # elif order == 3:
-    #     # best-fit qubic curve
+   
     #      m = polyfit2d(XX,YY,Z)
     #      ZZ = polyval2d(X, Y, m)
-
-    #     # A = np.c_[np.ones(data.shape[0]),data[:,0], data[:,1], data[:,:2], np.prod(data[:,:2], axis=1), data[:,:2]**2, data[:,:2]**3, ]
-    #     # C,_,_,_ = scipy.linalg.lstsq(A, data[:,2])
-    #     # Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY,XX**2,YY**2, XX**2*YY, XX*YY**2, XX**3, YY**3], C).reshape(X.shape)
 
     # fig = plt.figure()
     # ax = fig.gca(projection='3d')
@@ -398,14 +356,6 @@ if __name__ == "__main__":
     # ax.set_zlabel('PK[%]')
     # ax.axis('equal')
     # ax.axis('tight')
-    # # plt.show()
-    # # ax.set_zlim(20, 100)
     # plt.figure()
     # plt.plot(dd)
     # plt.show()
-
-    # model = loadModel("0,05")
-    # result = testNet(model[0], testPn, testTn, model[1], model[2])
-
-    # plt.plot(result[1])
-    # plt.plot(testTn)
