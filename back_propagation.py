@@ -8,8 +8,6 @@ import time
 import itertools
 from mpl_toolkits.mplot3d import axes3d
 import scipy.linalg
-from multiprocessing import Pool
-from itertools import combinations
 
 
 def polyfit2d(x, y, z, order=3):
@@ -307,55 +305,41 @@ if __name__ == "__main__":
     testPn = testData[0:15]
     testTn = testData[16:17][0]
 
-    lr = 0.01
+    lr = 0.0001
     Pn = Pn.transpose()
     testPn = testPn.transpose()
-    epochNum = 20000
-    neuralNetwork(Pn, Tn, 5,[100,40, 20, 10, 5] , epochNum, lr, testPn, testTn)
+    epochNum = 20
+    # neuralNetwork(Pn, Tn, 2,[100, 60] , epochNum, lr, testPn, testTn)
 
-    # x = [4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
-    # y = [1,2,3,4,5,6,7,8,9,10,11,12]
-    # x = np.array(x)
-    # y = np.array(y)
-    # X, Y = np.meshgrid(x,y)
-    # XX = X.flatten()
-    # YY = Y.flatten()
-    # Z=[]
-    # dd=[];
-    # for i, val in enumerate(X):
-    #     for j, vall in enumerate(val):
-    #         lr = 0.08
-    #         k =[]
-    #         k.append(vall)
-    #         k.append(Y[i, j])
-    #         # pool.apply_async(job, args=(Pn, Tn,k , epochNum, lr, testPn, testTn), callback=task)
-    #         czy = 0
-    #         while (czy < 20):
-    #             lr = 0.09
-    #             nn = neuralNetwork(Pn, Tn, 2,k , epochNum, lr, testPn, testTn)
-    #             czy = nn[0]
-    #             if(czy < 20):
-    #                 epochNum+= 100
-    #         epochNum+= 50;        
-    #         Z.append(nn[0])
-    #         dd.append(nn[3])
-    #     epochNum+=50;
+    x = list(range(10,101,10))
+    y = list(range(10,101,10))
+    x = np.array(x)
+    y = np.array(y)
+    X, Y = np.meshgrid(x,y)
+    XX = X.flatten()
+    YY = Y.flatten()
+    Z=[]
+    for i, val in enumerate(X):
+        for j, vall in enumerate(val):
+            lr = 0.08
+            k =[]
+            k.append(vall)
+            k.append(Y[i, j])
+            lr = 0.01
+            nn = neuralNetwork(Pn, Tn, 2,k , epochNum, lr, testPn, testTn)     
+            Z.append(nn[0])
             
-    # data = np.c_[XX,YY,Z]
-    # f = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]).transpose()
-   
-    #      m = polyfit2d(XX,YY,Z)
-    #      ZZ = polyval2d(X, Y, m)
+    data = np.c_[XX,YY,Z]
+    m = polyfit2d(XX,YY,Z)
+    ZZ = polyval2d(X, Y, m)
 
-    # fig = plt.figure()
-    # ax = fig.gca(projection='3d')
-    # ax.plot_surface(X, Y, ZZ, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=2, antialiased=True)
-    # # ax.scatter(data[:,0], data[:,1], data[:,2], c='r', s=50)
-    # plt.xlabel('S1')
-    # plt.ylabel('S2')
-    # ax.set_zlabel('PK[%]')
-    # ax.axis('equal')
-    # ax.axis('tight')
-    # plt.figure()
-    # plt.plot(dd)
-    # plt.show()
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    ax.plot_surface(X, Y, ZZ, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=2, antialiased=True)
+    # ax.scatter(data[:,0], data[:,1], data[:,2], c='r', s=50)
+    plt.xlabel('S1')
+    plt.ylabel('S2')
+    ax.set_zlabel('PK[%]')
+    ax.axis('equal')
+    ax.axis('tight')
+    plt.show()
