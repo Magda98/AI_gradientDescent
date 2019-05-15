@@ -4,30 +4,11 @@ import numpy as np
 from random import sample, shuffle
 import matplotlib.pyplot as plt
 import pickle
-import time
 import itertools
 from mpl_toolkits.mplot3d import axes3d
 import scipy.linalg
+import time
 
-
-def polyfit2d(x, y, z, order=3):
-    #funkcja do rysowania wykresu powierzchniowego
-    ncols = (order + 1)**2
-    G = np.zeros((x.size, ncols))
-    ij = itertools.product(range(order+1), range(order+1))
-    for k, (i,j) in enumerate(ij):
-        G[:,k] = x**i * y**j
-    m, _, _, _ = np.linalg.lstsq(G, z)
-    return m
-
-def polyval2d(x, y, m):
-    #funkcja do rysowania wykresu powierzchniowego
-    order = int(np.sqrt(len(m))) - 1
-    ij = itertools.product(range(order+1), range(order+1))
-    z = np.zeros_like(x, dtype=float)
-    for a, (i,j) in zip(m, ij):
-        z += a * x**i * y**j
-    return z
 
 def normalization(x, xmin, xmax):
     #normalizacja danych
@@ -35,7 +16,7 @@ def normalization(x, xmin, xmax):
         x[idv] = (2*(val-xmin))/(xmax - xmin) -1
     return x
 
-def prepareData():
+def prepareData(sort):
     # wczytanie i przygotowanie danych
     testData = []
     data = []
@@ -64,7 +45,8 @@ def prepareData():
             if(ile == tile[k-1]):
                 break
     data = np.delete(data, tab, 0)
-    # data=data[np.argsort(data[:,16])]
+    if(sort):
+        data=data[np.argsort(data[:,16])]
     testData = np.asarray(testData)
     testData =testData[np.argsort(testData[:,16])]
     data = data.transpose()
@@ -99,7 +81,7 @@ def outLayer(tab, weight, bias):
     x = sum(tab*weight) + bias[0]
     return x
 
-def loss(out, val):
+def out_error(out, val):
     return (val - out)
 
 def error_l(l, weight, fe):
@@ -123,11 +105,11 @@ def weightUpdate_a(weight, errors, arg, fe, learningRate, bias):
             weight[i][j] += learningRate*errors[i]*arg[j]
     return [weight, bias]
 
-def weightUpdate_l(weight, ls, arg, out, learningRate, bias):
+def weightUpdate_l(weight, oe, arg, out, learningRate, bias):
     #aktualizacja wag między ostatnią warstwą, a ostatnią ukrytą warstwą
     for i in range(weight.size):
-        bias[i] += learningRate*ls*1
-        weight[i] += learningRate*ls*1*arg[i]
+        bias[i] += learningRate*oe*1
+        weight[i] += learningRate*oe*1*arg[i]
     return [weight,bias]
 
 def saveModel(wages, neuronsInLayers, layerNum, path):
@@ -150,7 +132,7 @@ def loadModel(path):
 def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
     #testuje siec na danych testowych
     pk = 0
-    mse = []
+    sse = []
     testResult = []
     for i, tab in enumerate(testPn):
         fe = []
@@ -165,35 +147,28 @@ def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
         testResult.append(y)
         arg.append(sum(fe[-1] * w[-1]))
         fe.append(y)
-        ls = loss(y , testTn[i])
-        if( abs(loss(y , testTn[i])) <= 0.25 ):
+        oe = out_error(y , testTn[i])
+        if( abs(oe) <= 0.25 ):
             pk+=1
-        mse.append((0.5*(ls**2)))
+        sse.append((0.5*(oe**2)))
     pk = pk/(len(testTn)) *100
-    return [np.sum(np.array(mse)), testResult, pk]
+    return [np.sum(np.array(sse)), testResult, pk]
 
 def initNW(neuronsInLayers, layerNum):
     #inicializacja wag i biasów Nguyen-Widrow'a
-    weights = []
-    bias = []
+    '''
+    funkja wzorowana na funkcji z bliblioteki NeuroLab 
+    https://pythonhosted.org/neurolab/index.html
+    '''
+    weights = [] 
+    bias = [] #tablica przechowujaca wektory przesuniec
     amin = -1
     amax = 1
-    x = 0.5 * (amax - amin)
-    y = 0.5 * (amax + amin)
     w_fix = 0.7 * (neuronsInLayers[0] ** (1/15))
     w_rand = (np.random.rand(neuronsInLayers[0], 15) *2 -1)
     w_rand = np.sqrt(1. / np.square(w_rand).sum(axis=1).reshape(neuronsInLayers[0], 1)) * w_rand
     w = w_fix*w_rand
     b = np.array([0]) if neuronsInLayers[0] == 1 else w_fix * np.linspace(-1, 1, neuronsInLayers[0]) * np.sign(w[:, 0])
-    x = 0.5 * (amax - amin)
-    y = 0.5 * (amax + amin)
-    w = x * w
-    b = x * b + y
-    minmax = np.full((15, 2), np.array([-1, 1]))
-    x = 2. / (minmax[:, 1] - minmax[:, 0])
-    y = 1. - minmax[:, 1] * x
-    w = w * x
-    b = np.dot(w, y) + b
 
     weights.append(w)
     bias.append(b)
@@ -203,34 +178,20 @@ def initNW(neuronsInLayers, layerNum):
         w_rand = np.sqrt(1. / np.square(w_rand).sum(axis=1).reshape(neuronsInLayers[i], 1)) * w_rand
         w = w_fix*w_rand
         b = np.array([0]) if neuronsInLayers[i] == 1 else w_fix * np.linspace(-1, 1, neuronsInLayers[i]) * np.sign(w[:, 0])
-        x = 0.5 * (amax - amin)
-        y = 0.5 * (amax + amin)
-        w = x * w
-        b = x * b + y
-        minmax = np.full((neuronsInLayers[i-1], 2), np.array([-1, 1]))
-        x = 2. / (minmax[:, 1] - minmax[:, 0])
-        y = 1. - minmax[:, 1] * x
-        w = w * x
-        b = np.dot(w, y) + b
         weights.append(w)
         bias.append(b)
     # dla ostatniej warstwy
-    # w_fix = 0.7 * (1 ** (1/neuronsInLayers[-1]))
-    # w_rand = (np.random.rand(neuronsInLayers[-1], 1) *2 -1)
-    # w_rand = np.sqrt(1. / np.square(w_rand).sum(axis=1).reshape(neuronsInLayers[-1], 1)) * w_rand
-    # xd = (w_fix*w_rand).flatten()
     weights.append(np.random.rand(neuronsInLayers[-1]))
-    b = np.array([0]).astype(float) if 1 == 1 else w_fix * np.linspace(-1, 1, 1) * np.sign(w[:, 0])
-    bias.append(b)
+    bias.append(np.random.rand(1))
     return [weights, bias]
 
-def delta(arg, weights, neuronsInLayers, ls, layerNum):
+def delta(arg, weights, neuronsInLayers, oe, layerNum):
     #oblicza deltę przy propagacji wstecznej dla wszystkich warstw
-    derFe = arg[::-1]
-    wage_fl =  weights[::-1]
-    nil_fl = neuronsInLayers[::-1]
-    d = []
-    d.append(error_l(ls, wage_fl[0], derFe[1]))
+    derFe = arg[::-1] #odwrócona tablica wektorów łącznych pobudzen neuronów z danych warstw
+    wage_fl =  weights[::-1] #odwrócona tablica wag
+    nil_fl = neuronsInLayers[::-1] #odwrócona tablica z iloscia neuronów w danej warstwie
+    d = [] #tablica przechowująca wektory błędów dla danej warstwy
+    d.append(error_l(oe, wage_fl[0], derFe[1]))
     for k in range(1, layerNum):
         temp = wage_fl[k]
         temp = temp.transpose()
@@ -239,26 +200,28 @@ def delta(arg, weights, neuronsInLayers, ls, layerNum):
         for p in range(nil_fl[k]):
             temp_d.append(error_a(d[k-1], temp[p], dfe[p]))
         d.append(np.asarray(temp_d))
-    d = d[::-1]
+    d = d[::-1]#odwrócenie tablicy błędów
     return d
 
 def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn):
     #głowna funkcja odpowiadająca za sieć neuronową
-    oData = []
+    cost = []
     ep = 0
-    weights, bias = initNW(neuronsInLayers, layerNum)
-    lr_inc = 1.05
-    lr_desc = 0.7
-    er = 1.04
-    last = 0
+    goal = 0.0002
+    weights, bias = initNW(neuronsInLayers, layerNum) # zwracana tablica przechowująca wektory wagowe, przesunięć
+    lr_inc = 1.05 #wspolczynnik inkrementacji learning rate'u
+    lr_desc = 0.7 #wspolczynnik dekrementacji learning rate'u
+    er = 1.04 #error ratio
+    last_cost = 0 #wartosc funkcji kosztu w poprzedniej chwili czasu
     for j in range(epochNum):
-        result = []
-        o_weights = weights
-        mse=[]
+        result = [] #tablica przechowująca wyjścia sieci dla danej epoki
+        o_weights = weights #przypisanie wag do zmiennej przed wykonaniem się jednej epoki
+        o_bias = bias #przypisanie wag do zmiennej przed wykonaniem się jednej epoki
+        sse=[]
         for i, inData in enumerate(Pn):
-            fe = []
-            arg = []
-            fe_arg = []
+            fe = [] # tablica przechowująca wektory sygnałów wyjściowych z danych warstw
+            arg = [] # tablica przechowująca wektory łącznych pobudzen neuronów z danych warstw
+            fe_arg = [] #przechowuje listę tablic fe i arg
             fe.append(inData)
             for k in range(layerNum):
                 fe_arg = hiddenLayer(fe[k], neuronsInLayers[k], weights[k], bias[k])
@@ -266,21 +229,20 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
                 arg.append(fe_arg[1])
             output = outLayer(fe[-1], weights[-1], bias[-1])
             arg.append(sum(fe[-1] * weights[-1]))
-            ls = loss(output, Tn[i])
-            mse.append(0.5*(ls**2))
+            oe = out_error(output, Tn[i])
+            sse.append(0.5*(oe**2))
             result.append(output)
-            delta_w_b = delta(arg, weights, neuronsInLayers, ls, layerNum)
+            delta_w_b = delta(arg, weights, neuronsInLayers, oe, layerNum)
             for k in range(layerNum):
                 update = weightUpdate_a(weights[k], delta_w_b[k], fe[k], arg[k], learningRate, bias[k])
                 weights[k] = update[0]
                 bias[k] = update [1]
-            update = weightUpdate_l(weights[layerNum], ls, fe[-1], arg[-1], learningRate, bias[-2])
+            update = weightUpdate_l(weights[layerNum], oe, fe[-1], arg[-1], learningRate, bias[-2])
             weights[layerNum] = update[0]
             bias[-2] = update[1]
-            bias[-1] += ls
+            bias[-1] += oe
 
         tData = testNet(weights, testPn, testTn, neuronsInLayers, layerNum, bias)
-        # oData.append(tData[0])
         # pk.append(tData[2])
         # lr.append(learningRate)
         # plt.plot(tData[1])
@@ -288,32 +250,37 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
         # plt.draw()
         # plt.pause(1e-17)
         # plt.clf()
-        if( sum(mse) > last*er):
+        sum_sse = sum(sse)
+        if( sum_sse > last_cost*er):
             weights = o_weights
+            bias = o_bias
             if(learningRate >= 0.0001):
                 learningRate = lr_desc * learningRate
-        elif( sum(mse) < last):
+        elif( sum_sse < last_cost):
             learningRate = lr_inc * learningRate
             if(learningRate > 0.99):
                 learningRate = 0.99
-        last = sum(mse)
-        print(f'Epoka #{j:02d} mse: {tData[0]:.10f}, lr: {learningRate:.4f}, pk: {tData[2]:.2f}%, n: {neuronsInLayers[0]}, {neuronsInLayers[1]}%', end='\r')
+        last_cost = sum_sse
+        cost.append(sum_sse)
+        if (tData[0] < goal):
+            ep = j
+            break
+        print(f'Epoka #{j:02d} sse: {tData[0]:.10f}, lr: {learningRate:.4f}, pk: {tData[2]:.2f}%, n: {neuronsInLayers[0]}, {neuronsInLayers[1]}%', end='\r')
         ep = j
     testResult = testNet(weights, testPn, testTn, neuronsInLayers, layerNum,bias)
     # saveModel(weights, neuronsInLayers, layerNum, "model")
     # print(f'end at epoch num: {epochNum}')
-    # plt.plot(oData)
     # plt.figure()
-    # plt.plot(result)
-    # plt.plot(Tn)
-    # plt.figure()
+    plt.plot(result)
+    plt.plot(Tn)
+    plt.figure()
     # plt.plot(testResult[1])
     # plt.plot(testTn)
-    return [testResult[2], testResult[0], oData, ep]
+    return [testResult[2], testResult[0], result, ep, cost, testResult[1]]
 
 #main#
 if __name__ == "__main__":
-    data, testData = prepareData()
+    data, testData = prepareData(True)
     #podział danych na wejściowe i target
     Pn = data[0:15]
     Tn = data[16:17][0]
@@ -321,43 +288,40 @@ if __name__ == "__main__":
     testPn = testData[0:15]
     testTn = testData[16:17][0]
 
-    lr = 0.0001
+    lr = 0.01
     Pn = Pn.transpose()
     testPn = testPn.transpose()
-    epochNum = 20
-    # neuralNetwork(Pn, Tn, 2,[100, 60] , epochNum, lr, testPn, testTn)
+    epochNum = 10
+    result = neuralNetwork(Pn, Tn, 2,[50, 15] , epochNum, lr, testPn, testTn)[5]
+
+    plt.plot(testTn,color = '#4daf4a' , linewidth=2.0, label='target')
+    plt.plot(result,color= '#e55964', linewidth=2.0, label='wyjście')
+    plt.ylabel('klasa')
+    plt.grid(True)
+    plt.xlabel('wzorzec')
+    plt.legend(loc='upper left')
+    plt.show()
+
 
     ########################################################################################################################################
     # Eksperymenty #
-    x = list(range(10,51,2))
-    y = list(range(10,51,2))
-    x = np.array(x)
-    y = np.array(y)
-    X, Y = np.meshgrid(x,y)
-    XX = X.flatten()
-    YY = Y.flatten()
-    Z=[]
-    for i, val in enumerate(X):
-        for j, vall in enumerate(val):
-            lr = 0.08
-            k =[]
-            k.append(vall)
-            k.append(Y[i, j])
-            lr = 0.01
-            nn = neuralNetwork(Pn, Tn, 2,k , epochNum, lr, testPn, testTn)     
-            Z.append(nn[0])
-            
-    data = np.c_[XX,YY,Z]
-    m = polyfit2d(XX,YY,Z)
-    ZZ = polyval2d(X, Y, m)
+    # for ep in epochNum:
+    #     X = range(1,32,3)
+    #     Y = range(1,32,3)
+    #     X, Y = np.meshgrid(X,Y)
+    #     Z=[]
+    #     M=[]
+    #     for i, val in enumerate(X):
+    #         for j, vall in enumerate(val):
+    #             k =[]
+    #             k.append(vall)
+    #             k.append(Y[i, j])
+    #             lr = 0.001
+    #             nn = neuralNetwork(Pn, Tn, 2,k , ep, lr, testPn, testTn)     
+    #             Z.append(nn[0])
+                
+    #     with open(f'{time.time()}.csv', 'w') as f:
+    #         for x,y,z in zip(X.flatten(), Y.flatten(), Z):
+    #             f.write(f'{x};{y};{z}\n')
 
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    ax.plot_surface(X, Y, ZZ, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=2, antialiased=True)
-    # ax.scatter(data[:,0], data[:,1], data[:,2], c='r', s=50)
-    plt.xlabel('S1')
-    plt.ylabel('S2')
-    ax.set_zlabel('PK[%]')
-    ax.axis('equal')
-    ax.axis('tight')
-    plt.show()
+    
