@@ -162,8 +162,6 @@ def initNW(neuronsInLayers, layerNum):
     '''
     weights = [] 
     bias = [] #tablica przechowujaca wektory przesuniec
-    amin = -1
-    amax = 1
     w_fix = 0.7 * (neuronsInLayers[0] ** (1/15))
     w_rand = (np.random.rand(neuronsInLayers[0], 15) *2 -1)
     w_rand = np.sqrt(1. / np.square(w_rand).sum(axis=1).reshape(neuronsInLayers[0], 1)) * w_rand
@@ -206,6 +204,7 @@ def delta(arg, weights, neuronsInLayers, oe, layerNum):
 def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn):
     #głowna funkcja odpowiadająca za sieć neuronową
     cost = []
+    cost_test = []
     ep = 0
     goal = 0.0002
     weights, bias = initNW(neuronsInLayers, layerNum) # zwracana tablica przechowująca wektory wagowe, przesunięć
@@ -262,6 +261,7 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
                 learningRate = 0.99
         last_cost = sum_sse
         cost.append(sum_sse)
+        cost_test.append(tData[0])
         if (tData[0] < goal):
             ep = j
             break
@@ -276,11 +276,11 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
     plt.figure()
     # plt.plot(testResult[1])
     # plt.plot(testTn)
-    return [testResult[2], testResult[0], result, ep, cost, testResult[1]]
+    return [testResult[2], testResult[0], cost_test, ep, cost, testResult[1]]
 
 #main#
 if __name__ == "__main__":
-    data, testData = prepareData(True)
+    data, testData = prepareData(False)
     #podział danych na wejściowe i target
     Pn = data[0:15]
     Tn = data[16:17][0]
@@ -291,11 +291,11 @@ if __name__ == "__main__":
     lr = 0.01
     Pn = Pn.transpose()
     testPn = testPn.transpose()
-    epochNum = 10
-    result = neuralNetwork(Pn, Tn, 2,[50, 15] , epochNum, lr, testPn, testTn)[5]
+    epochNum = 90
+    result = neuralNetwork(Pn, Tn, 2,[50, 15] , epochNum, lr, testPn, testTn)
 
-    plt.plot(testTn,color = '#4daf4a' , linewidth=2.0, label='target')
-    plt.plot(result,color= '#e55964', linewidth=2.0, label='wyjście')
+    plt.plot(result[5],color = '#4daf4a' , marker='o',linewidth=2.0, label='wyjście')
+    plt.plot(testTn,color= '#e55964', marker='o', linewidth=2.0, label='target')
     plt.ylabel('klasa')
     plt.grid(True)
     plt.xlabel('wzorzec')
@@ -305,20 +305,18 @@ if __name__ == "__main__":
 
     ########################################################################################################################################
     # Eksperymenty #
-    # for ep in epochNum:
-    #     X = range(1,32,3)
-    #     Y = range(1,32,3)
-    #     X, Y = np.meshgrid(X,Y)
-    #     Z=[]
-    #     M=[]
-    #     for i, val in enumerate(X):
-    #         for j, vall in enumerate(val):
-    #             k =[]
-    #             k.append(vall)
-    #             k.append(Y[i, j])
-    #             lr = 0.001
-    #             nn = neuralNetwork(Pn, Tn, 2,k , ep, lr, testPn, testTn)     
-    #             Z.append(nn[0])
+    # S1 = range(1,51,5)
+    # S2 = range(1,51,5)
+    # S1, S2 = np.meshgrid(S1,S2)
+    # PK=[]
+    # for i, val in enumerate(S1):
+    #     for j, vall in enumerate(val):
+    #         model =[]
+    #         model.append(vall)
+    #         model.append(S2[i, j])
+    #         lr = 0.001
+    #         result = neuralNetwork(Pn, Tn, 2,model , epochNum, lr, testPn, testTn)     
+    #         PK.append(result[0])
                 
     #     with open(f'{time.time()}.csv', 'w') as f:
     #         for x,y,z in zip(X.flatten(), Y.flatten(), Z):
