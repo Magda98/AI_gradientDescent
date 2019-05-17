@@ -53,13 +53,12 @@ def prepareData(sort):
     testData = testData.transpose()
     return [data, testData]
 
-def activation(x):
+def activation(x, B = 1):
     #funkcja aktywacji sigmoidalna bipolarna
-    return np.tanh(x)
+    return np.tanh(B*x)
 
-def derivative(x):
-    z = activation(x)
-    return 1 - z**2
+def derivative(x, B = 1):
+    return 1 -activation(B*x)**2
 
 def weighted_av (tab, weight):
     return tab * weight
@@ -201,16 +200,13 @@ def delta(arg, weights, neuronsInLayers, oe, layerNum):
     d = d[::-1]#odwrócenie tablicy błędów
     return d
 
-def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn):
+def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn, lr_inc = 1.05, lr_desc = 0.7, er = 1.04):
     #głowna funkcja odpowiadająca za sieć neuronową
     cost = []
     cost_test = []
     ep = 0
     goal = 0.0002
     weights, bias = initNW(neuronsInLayers, layerNum) # zwracana tablica przechowująca wektory wagowe, przesunięć
-    lr_inc = 1.05 #wspolczynnik inkrementacji learning rate'u
-    lr_desc = 0.7 #wspolczynnik dekrementacji learning rate'u
-    er = 1.04 #error ratio
     last_cost = 0 #wartosc funkcji kosztu w poprzedniej chwili czasu
     for j in range(epochNum):
         result = [] #tablica przechowująca wyjścia sieci dla danej epoki
@@ -271,9 +267,9 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
     # saveModel(weights, neuronsInLayers, layerNum, "model")
     # print(f'end at epoch num: {epochNum}')
     # plt.figure()
-    plt.plot(result)
-    plt.plot(Tn)
-    plt.figure()
+    # plt.plot(result)
+    # plt.plot(Tn)
+    # plt.figure()
     # plt.plot(testResult[1])
     # plt.plot(testTn)
     return [testResult[2], testResult[0], cost_test, ep, cost, testResult[1]]
@@ -292,13 +288,18 @@ if __name__ == "__main__":
     Pn = Pn.transpose()
     testPn = testPn.transpose()
     epochNum = 90
-    result = neuralNetwork(Pn, Tn, 2,[50, 15] , epochNum, lr, testPn, testTn)
+    # result = neuralNetwork(Pn, Tn, 2,[50, 15] , epochNum, lr, testPn, testTn)
+    e_ratio = np.arange(1.01,1.07,0.002)
+    PK=[]
+    for i, val in enumerate(e_ratio):
+        nn = neuralNetwork(Pn, Tn, 2,[50,15] , epochNum, lr, testPn, testTn,1, er = val )     
+        PK.append(nn[0])
 
-    plt.plot(result[5],color = '#4daf4a' , marker='o',linewidth=2.0, label='wyjście')
-    plt.plot(testTn,color= '#e55964', marker='o', linewidth=2.0, label='target')
-    plt.ylabel('klasa')
+    plt.plot(e_ratio, PK ,color = '#4daf4a' , marker='o',linewidth=2.0)
+    # plt.plot(testTn,color= '#e55964', marker='o', linewidth=2.0, label='target')
+    plt.ylabel('PK[%]')
     plt.grid(True)
-    plt.xlabel('wzorzec')
+    plt.xlabel('error ratio')
     plt.legend(loc='upper left')
     plt.show()
 
