@@ -147,7 +147,7 @@ def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
         arg.append(sum(fe[-1] * w[-1]))
         fe.append(y)
         oe = out_error(y , testTn[i])
-        if( abs(oe) <= 0.25 ):
+        if( oe**2 <= 0.25 ):
             pk+=1
         sse.append((0.5*(oe**2)))
     pk = pk/(len(testTn)) *100
@@ -261,7 +261,7 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
         if (tData[0] < goal):
             ep = j
             break
-        print(f'Epoka #{j:02d} sse: {tData[0]:.10f}, lr: {learningRate:.4f}, pk: {tData[2]:.2f}%, n: {neuronsInLayers[0]}, {neuronsInLayers[1]}%', end='\r')
+        print(f'Epoka #{j:02d} sse: {tData[0]:.10f}, lr: {learningRate:.4f}, pk: {tData[2]:.2f}%, er: {er}, n: {neuronsInLayers[0]}, {neuronsInLayers[1]}%', end='\r')
         ep = j
     testResult = testNet(weights, testPn, testTn, neuronsInLayers, layerNum,bias)
     # saveModel(weights, neuronsInLayers, layerNum, "model")
@@ -287,27 +287,43 @@ if __name__ == "__main__":
     lr = 0.01
     Pn = Pn.transpose()
     testPn = testPn.transpose()
-    epochNum = 90
-    # result = neuralNetwork(Pn, Tn, 2,[50, 15] , epochNum, lr, testPn, testTn)
-    e_ratio = np.arange(1.01,1.07,0.002)
-    PK=[]
-    for i, val in enumerate(e_ratio):
-        nn = neuralNetwork(Pn, Tn, 2,[50,15] , epochNum, lr, testPn, testTn,1, er = val )     
-        PK.append(nn[0])
+    epochNum = 50
+    resultRn = neuralNetwork(Pn, Tn, 2,[26, 15] , epochNum, lr, testPn, testTn)
 
-    plt.plot(e_ratio, PK ,color = '#4daf4a' , marker='o',linewidth=2.0)
-    # plt.plot(testTn,color= '#e55964', marker='o', linewidth=2.0, label='target')
-    plt.ylabel('PK[%]')
-    plt.grid(True)
-    plt.xlabel('error ratio')
-    plt.legend(loc='upper left')
-    plt.show()
+    # data = data.transpose()
+    # data=data[np.argsort(data[:,16])]
+    # data = data.transpose()
+    # Pn = data[0:15]
+    # Tn = data[16:17][0]
+    # testPn = testData[0:15]
+    # testTn = testData[16:17][0]
+
+    # Pn = Pn.transpose()
+    # testPn = testPn.transpose()
+
+
+    # resultSort = neuralNetwork(Pn, Tn, 2,[50, 15] , epochNum, lr, testPn, testTn)
+
+    # plt.plot(resultRn[2], color = '#4daf4a' ,linewidth=2.0, label='loswa kolejność')
+    # plt.plot(resultSort[2], color= '#e55964', linewidth=2.0, label='posortowane')
+    # plt.ylabel('koszt')
+    # plt.grid(True)
+    # plt.xlabel('epoka')
+    # plt.legend(loc='upper right')
+    # plt.show();
+    # plt.plot(resultSort[5], color = '#4daf4a' , marker='o',linewidth=2.0, label='wyjście')
+    # plt.plot(testTn, color= '#e55964', marker='o', linewidth=2.0, label='target')
+    # plt.ylabel('klasa')
+    # plt.grid(True)
+    # plt.xlabel('wzorzec')
+    # plt.legend(loc='upper left')
+    # plt.show()
 
 
     ########################################################################################################################################
     # Eksperymenty #
-    # S1 = range(1,51,5)
-    # S2 = range(1,51,5)
+    # S1 = range(1,52,5)
+    # S2 = range(1,52,5)
     # S1, S2 = np.meshgrid(S1,S2)
     # PK=[]
     # for i, val in enumerate(S1):
@@ -319,8 +335,26 @@ if __name__ == "__main__":
     #         result = neuralNetwork(Pn, Tn, 2,model , epochNum, lr, testPn, testTn)     
     #         PK.append(result[0])
                 
-    #     with open(f'{time.time()}.csv', 'w') as f:
-    #         for x,y,z in zip(X.flatten(), Y.flatten(), Z):
-    #             f.write(f'{x};{y};{z}\n')
+    # with open(f'test.csv', 'w') as f:
+    #     for x,y,z in zip(S1.flatten(), S2.flatten(), PK):
+    #         f.write(f'{x};{y};{z}\n')
 
-    
+    # inc = np.arange(1.01,1.09,0.01)
+    # desc = np.arange(0.5,0.9,0.05)
+    # inc, desc = np.meshgrid(inc,desc)
+    # PK=[]
+    # for i, row in enumerate(inc):
+    #     for j, val in enumerate(row):
+    #         result = neuralNetwork(Pn, Tn, 2,[50,15] , epochNum, lr, testPn, testTn, lr_inc = val, lr_desc = desc[i, j])     
+    #         PK.append(result[0])
+
+
+    # e_ratio = np.arange(1.01,1.07,0.005)
+    # PK=[]
+    # for i, val in enumerate(e_ratio):
+    #     nn = neuralNetwork(Pn, Tn, 2,[50,15] , epochNum, lr, testPn, testTn, er = val )     
+    #     PK.append(nn[0])
+
+    # with open(f'error_ratio.csv', 'w') as f:
+    #         for x,y in zip(e_ratio, PK):
+    #             f.write(f'{x};{y}\n')
