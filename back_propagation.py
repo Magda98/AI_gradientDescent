@@ -238,13 +238,18 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
             bias[-1] += oe
 
         tData = testNet(weights, testPn, testTn, neuronsInLayers, layerNum, bias)
-        # pk.append(tData[2])
-        # lr.append(learningRate)
-        # plt.plot(tData[1])
-        # plt.plot(testTn)
-        # plt.draw()
-        # plt.pause(1e-17)
-        # plt.clf()
+
+        ######### live plot #########
+        plt.plot(tData[1], color = '#4daf4a' , marker='o', label="wyjscie sieci")
+        plt.plot(testTn, color= '#e55964', marker='o', label="target")
+        plt.legend(loc='upper left')
+        plt.ylabel('klasa')
+        plt.xlabel('wzorzec')
+        plt.draw()
+        plt.pause(1e-17)
+        plt.clf()
+        #############################
+
         sum_sse = sum(sse)
         if( sum_sse > last_cost*er):
             weights = o_weights
@@ -261,17 +266,16 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
         if (tData[0] < goal):
             ep = j
             break
-        print(f'Epoka #{j:02d} sse: {tData[0]:.10f}, lr: {learningRate:.4f}, pk: {tData[2]:.2f}%, er: {er}, n: {neuronsInLayers[0]}, {neuronsInLayers[1]}%', end='\r')
+        print(f'Epoka #{j:02d} sse: {tData[0]:.10f}, lr: {learningRate:.4f}, pk: {tData[2]:.2f}%, n: {neuronsInLayers[0]}, {neuronsInLayers[1]}%', end='\r')
         ep = j
     testResult = testNet(weights, testPn, testTn, neuronsInLayers, layerNum,bias)
-    # saveModel(weights, neuronsInLayers, layerNum, "model")
-    # print(f'end at epoch num: {epochNum}')
-    # plt.figure()
-    # plt.plot(result)
-    # plt.plot(Tn)
-    # plt.figure()
-    # plt.plot(testResult[1])
-    # plt.plot(testTn)
+
+    plt.plot(testResult[1], color = '#4daf4a' , marker='o', label="wyjscie sieci")
+    plt.plot(testTn, color= '#e55964', marker='o', label="target")
+    plt.legend(loc='upper left')
+    plt.ylabel('klasa')
+    plt.xlabel('wzorzec')
+    plt.show()
     return [testResult[2], testResult[0], cost_test, ep, cost, testResult[1]]
 
 #main#
