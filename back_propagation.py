@@ -9,6 +9,10 @@ from mpl_toolkits.mplot3d import axes3d
 import scipy.linalg
 import time
 
+##########################
+# autor: Magdalena Kochman
+# sieć neuronowa uczona algorytmem wstecznej propagacji z adaptacyjnym wspolczynnikiem uczenia
+###########################
 
 def normalization(x, xmin, xmax):
     #normalizacja danych
