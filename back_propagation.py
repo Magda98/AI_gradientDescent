@@ -10,18 +10,19 @@ import scipy.linalg
 import time
 
 ##########################
-# autor: Magdalena Kochman
-# sieć neuronowa uczona algorytmem wstecznej propagacji z adaptacyjnym wspolczynnikiem uczenia
+# author: Magdalena Kochman
+# Neural network learned by back-propagation algorithm with adaptive learning coefficient.
+# The back-propagation algorithm was written from scratch.
 ###########################
 
 def normalization(x, xmin, xmax):
-    #normalizacja danych
+    # data normalization
     for idv,val in enumerate(x):
         x[idv] = (2*(val-xmin))/(xmax - xmin) -1
     return x
 
 def prepareData(sort):
-    # wczytanie i przygotowanie danych
+    # read and prepare data
     testData = []
     data = []
     d=[]
@@ -58,7 +59,7 @@ def prepareData(sort):
     return [data, testData]
 
 def activation(x, B = 1):
-    #funkcja aktywacji sigmoidalna bipolarna
+    # sigmoind activation function
     return np.tanh(B*x)
 
 def derivative(x, B = 1):
@@ -68,8 +69,8 @@ def weighted_av (tab, weight):
     return tab * weight
 
 def hiddenLayer(tab, neuronsNumber, weight, bias):
-    #obliczanie łacznego pobudzenia neuronów w warstwie
-    # oraz sygnałow wyjasciowcyh z neuronów
+    # calculate sum of activation in layer
+    # and output of each neuron
     arg = []
     ee = []
     for i in range(neuronsNumber):
@@ -79,7 +80,7 @@ def hiddenLayer(tab, neuronsNumber, weight, bias):
     return [arg, ee]
 
 def outLayer(tab, weight, bias):
-    #obliczanie sygnału wyjściowego w ostatniej warstwie
+    # output of each layer
     tab = np.asarray(tab)
     x = sum(tab*weight) + bias[0]
     return x
@@ -88,20 +89,20 @@ def out_error(out, val):
     return (val - out)
 
 def error_l(l, weight, fe):
-    #obliczanie delty dla ostatniej wrastwy
+    # erroe for last layer
     err = []
     for k, val in enumerate(fe):
         err.append(l*weight[k] *derivative(val))
     return err
 
 def error_a(err, weight, fe):
-    #obliczanie delty dla pozostałych warstw, procz ostatniej
+    # error for other layers
     err = np.asarray(err)
     x = derivative(fe)* sum(weight * err)
     return x
 
 def weightUpdate_a(weight, errors, arg, fe, learningRate, bias):
-    #aktualizacja wag dla wszystkich warstw procz ostatniej
+    # weight actualization
     for i, val in enumerate(weight):
         bias[i] += learningRate*errors[i]
         for j in range(val.size):
@@ -109,21 +110,21 @@ def weightUpdate_a(weight, errors, arg, fe, learningRate, bias):
     return [weight, bias]
 
 def weightUpdate_l(weight, oe, arg, out, learningRate, bias):
-    #aktualizacja wag między ostatnią warstwą, a ostatnią ukrytą warstwą
+    # weight actualization for last layer
     for i in range(weight.size):
         bias[i] += learningRate*oe*1
         weight[i] += learningRate*oe*1*arg[i]
     return [weight,bias]
 
 def saveModel(wages, neuronsInLayers, layerNum, path):
-    #zapisuje dany model sieci w pliku binarnym
+    # save model in binary file
     with open(path, 'wb') as f:
         pickle.dump(wages, f)
         pickle.dump(neuronsInLayers, f)
         pickle.dump(layerNum, f)
 
 def loadModel(path):
-    #wczystuje dany model sieci
+    # read model from file
     weights = []
     nauronsInLayers = []
     with open(path, 'rb') as f:
@@ -133,7 +134,7 @@ def loadModel(path):
     return [weights, nauronsInLayers, layerNum]
 
 def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
-    #testuje siec na danych testowych
+    # test neural network
     pk = 0
     sse = []
     testResult = []
@@ -158,13 +159,12 @@ def testNet(w, testPn, testTn, neuronsInLayers, layerNum, bias):
     return [np.sum(np.array(sse)), testResult, pk]
 
 def initNW(neuronsInLayers, layerNum):
-    #inicializacja wag i biasów Nguyen-Widrow'a
+    # weight and baias inicialization Nguyen-Widrow'a
     '''
-    funkja wzorowana na funkcji z bliblioteki NeuroLab 
     https://pythonhosted.org/neurolab/index.html
     '''
     weights = [] 
-    bias = [] #tablica przechowujaca wektory przesuniec
+    bias = []
     w_fix = 0.7 * (neuronsInLayers[0] ** (1/15))
     w_rand = (np.random.rand(neuronsInLayers[0], 15) *2 -1)
     w_rand = np.sqrt(1. / np.square(w_rand).sum(axis=1).reshape(neuronsInLayers[0], 1)) * w_rand
@@ -181,17 +181,17 @@ def initNW(neuronsInLayers, layerNum):
         b = np.array([0]) if neuronsInLayers[i] == 1 else w_fix * np.linspace(-1, 1, neuronsInLayers[i]) * np.sign(w[:, 0])
         weights.append(w)
         bias.append(b)
-    # dla ostatniej warstwy
+    # last layer
     weights.append(np.random.rand(neuronsInLayers[-1]))
     bias.append(np.random.rand(1))
     return [weights, bias]
 
 def delta(arg, weights, neuronsInLayers, oe, layerNum):
-    #oblicza deltę przy propagacji wstecznej dla wszystkich warstw
-    derFe = arg[::-1] #odwrócona tablica wektorów łącznych pobudzen neuronów z danych warstw
-    wage_fl =  weights[::-1] #odwrócona tablica wag
-    nil_fl = neuronsInLayers[::-1] #odwrócona tablica z iloscia neuronów w danej warstwie
-    d = [] #tablica przechowująca wektory błędów dla danej warstwy
+    # calculate error for layers
+    derFe = arg[::-1] # reversed activation array
+    wage_fl =  weights[::-1] # reverse weight array
+    nil_fl = neuronsInLayers[::-1] # reverse neuron count array
+    d = [] # array of errors for each layer
     d.append(error_l(oe, wage_fl[0], derFe[1]))
     for k in range(1, layerNum):
         temp = wage_fl[k]
@@ -201,26 +201,26 @@ def delta(arg, weights, neuronsInLayers, oe, layerNum):
         for p in range(nil_fl[k]):
             temp_d.append(error_a(d[k-1], temp[p], dfe[p]))
         d.append(np.asarray(temp_d))
-    d = d[::-1]#odwrócenie tablicy błędów
+    d = d[::-1]# reverse of error array
     return d
 
 def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, testPn, testTn, lr_inc = 1.05, lr_desc = 0.7, er = 1.04):
-    #głowna funkcja odpowiadająca za sieć neuronową
+    # main neural network function
     cost = []
     cost_test = []
     ep = 0
     goal = 0.0002
-    weights, bias = initNW(neuronsInLayers, layerNum) # zwracana tablica przechowująca wektory wagowe, przesunięć
-    last_cost = 0 #wartosc funkcji kosztu w poprzedniej chwili czasu
+    weights, bias = initNW(neuronsInLayers, layerNum)
+    last_cost = 0
     for j in range(epochNum):
-        result = [] #tablica przechowująca wyjścia sieci dla danej epoki
-        o_weights = weights #przypisanie wag do zmiennej przed wykonaniem się jednej epoki
-        o_bias = bias #przypisanie wag do zmiennej przed wykonaniem się jednej epoki
+        result = []
+        o_weights = weights 
+        o_bias = bias 
         sse=[]
         for i, inData in enumerate(Pn):
-            fe = [] # tablica przechowująca wektory sygnałów wyjściowych z danych warstw
-            arg = [] # tablica przechowująca wektory łącznych pobudzen neuronów z danych warstw
-            fe_arg = [] #przechowuje listę tablic fe i arg
+            fe = []
+            arg = []
+            fe_arg = []
             fe.append(inData)
             for k in range(layerNum):
                 fe_arg = hiddenLayer(fe[k], neuronsInLayers[k], weights[k], bias[k])
@@ -284,8 +284,9 @@ def neuralNetwork(Pn, Tn, layerNum, neuronsInLayers, epochNum, learningRate, tes
 
 #main#
 if __name__ == "__main__":
-    data, testData = prepareData(False) #jezeli False dane treningowe sa niesortowane
-    #podział danych na wejściowe i target
+    # for false input data is not sorted
+    data, testData = prepareData(False)
+    # split data for input and target
     Pn = data[0:15]
     Tn = data[16:17][0]
 
